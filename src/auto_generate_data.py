@@ -17,10 +17,10 @@
 # 在上傳資料到 bucket 時，因為 bucket 會設定容許的 domain name, 所以要注意一下
 
 import json
-import psycopg2
 import time 
 import random
 
+import psycopg2
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 from boto.s3.cors import CORSConfiguration
@@ -32,18 +32,21 @@ import db_config
 conn = psycopg2.connect(database=db_config.DATABASE, user=db_config.ROLE, password=db_config.PASSWORD)
 cur = conn.cursor()
 
+# 設定模糊化的亂數種子
+# 為了讓下一次地圖的點不會消失，可以採用固定種子
+random.seed(1)
+
 # 從 db 存取資料並產生 json
 cur.execute(db_config.QUERY)
 rows = cur.fetchall()
 db_result = list()
 for row in rows:
     row_data = dict()
+
+    # TODO 預計不提供 address, 因為採模糊處理就是為了不曝露確切位置。
     row_data['address'] = row[0]
-    
-    # TODO 尚未模糊化 GPS
-    # lat, lng will be floating number (class 'float')
-    row_data['lat'] = row[1]
-    row_data['lng'] = row[2]
+    row_data['lat'] = row[1] + random.randint(-50, 50) * 0.00001
+    row_data['lng'] = row[2] + random.randint(-50, 50) * 0.00001
     row_data['description'] = row[3]
 
     db_result.append(row_data)
