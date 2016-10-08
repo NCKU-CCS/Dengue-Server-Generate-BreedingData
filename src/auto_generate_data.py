@@ -32,11 +32,8 @@ import db_config
 conn = psycopg2.connect(database=db_config.DATABASE, user=db_config.ROLE, password=db_config.PASSWORD)
 cur = conn.cursor()
 
-# 從 db 存取資料
-# TODO 將 SQL query 寫到 db_config 裡面
+# 從 db 存取資料並產生 json
 cur.execute(db_config.QUERY)
-
-# from database to json
 rows = cur.fetchall()
 db_result = list()
 for row in rows:
@@ -59,11 +56,10 @@ result['data'] = db_result
 with open("breeding_source.json", "w") as fd:
     status = json.dump(result, fd, ensure_ascii=False, indent=4)
 
-access_key = credentials.ACCESS_KEY
-secret_key = credentials.PRIVATE_KEY
-s3con = S3Connection(access_key, secret_key)
 
+s3con = S3Connection(credentials.ACCESS_KEY, credentials.PRIVATE_KEY)
 bucket = s3con.get_bucket('dengue-test')
+
 # TODO 要修改 bucket 的 rule 縮限容許的 domain name
 cors_cfg = CORSConfiguration()
 cors_cfg.add_rule('GET', '*')
