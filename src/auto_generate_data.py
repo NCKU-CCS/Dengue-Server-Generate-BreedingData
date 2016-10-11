@@ -28,51 +28,55 @@ from boto.s3.cors import CORSConfiguration
 import credentials
 import db_config
 
-# connect to database
-conn = psycopg2.connect(database=db_config.DATABASE, user=db_config.ROLE, password=db_config.PASSWORD)
-cur = conn.cursor()
+def extract_from_rows(rows, is_blurred=True):
+    result = dict()
+    db_data = list()
+    for row in rows:
+        row_data = dict()
+        
+        row_data['address'] = row[0]
+        row_data['lat'] = row[1] + random.randint(-50, 50) * 0.00001 if is_blurred else 0
+        row_data['lng'] = row[2] + random.randint(-50, 50) * 0.00001 if is_blurred else 0
+        row_data['description'] = row[3]
 
-# 設定模糊化的亂數種子
-# 為了讓下一次地圖的點不會消失，可以採用固定種子
-random.seed(1)
+        db_data.append(row_data)
 
-# 從 db 存取資料並產生 json
-cur.execute(db_config.QUERY)
-rows = cur.fetchall()
-db_result = list()
-for row in rows:
-    row_data = dict()
-
-    # TODO 預計不提供 address, 因為採模糊處理就是為了不曝露確切位置。
-    row_data['address'] = row[0]
-    row_data['lat'] = row[1] + random.randint(-50, 50) * 0.00001
-    row_data['lng'] = row[2] + random.randint(-50, 50) * 0.00001
-    row_data['description'] = row[3]
-
-    db_result.append(row_data)
-
-result = dict()
-result['generated_time'] = time.asctime() 
-result['data'] = db_result
-
-# generate json file
-with open("breeding_source.json", "w") as fd:
-    status = json.dump(result, fd, ensure_ascii=False, indent=4)
+    result = dict()
+    result['generated_time'] = time.asctime() 
+    result['data'] = db_data 
+    
+    return result
 
 
-s3con = S3Connection(credentials.ACCESS_KEY, credentials.PRIVATE_KEY)
-bucket = s3con.get_bucket('dengue-test')
+if __name__ == "__main__":
 
-# TODO 要修改 bucket 的 rule 縮限容許的 domain name
-cors_cfg = CORSConfiguration()
-cors_cfg.add_rule('GET', '*')
-bucket.set_cors(cors_cfg)
+    # 設定模糊化的亂數種子
+    # 為了讓下一次地圖的點不會消失，可以採用固定種子
+    random.seed(1)
+    
+    conn = psycopg2.connect(database=db_config.DATABASE, user=db_config.ROLE, password=db_config.PASSWORD) 
+    cur = conn.cursor()
+    cur.execute(db_config.QUERY)
+    rows = cur.fetchall()
+    result = extract_from_rows(rows)
+    
+    # generate json file
+    with open("breeding_source_blurred.json", "w") as fd:
+        status = json.dump(result, fd, ensure_ascii=False, indent=4)
+    
+    
+    s3con = S3Connection(credentials.ACCESS_KEY, credentials.PRIVATE_KEY)
+    bucket = s3con.get_bucket('dengue-test')
+    
+    cors_cfg = CORSConfiguration()
+    cors_cfg.add_rule('GET', ['https://winone520.github.io',])
+    bucket.set_cors(cors_cfg)
 
-k = Key(bucket)
-k.key = 'breeding-sources/heatmap_blurred.json'
-k.set_contents_from_filename("./breeding_source.json")
-k.set_metadata("Content-Type", "application/json")
-k.set_acl("public-read")
+    k = Key(bucket)
+    k.key = 'breeding-sources/heatmap_blurred.json'
+    k.set_contents_from_filename("./breeding_source_blurred.json")
+    k.set_metadata("Content-Type", "application/json")
+    k.set_acl("public-read")
 
-print (k.get_acl())
-print (k.generate_url(expires_in=0, query_auth=False))
+    print (k.get_acl())
+    print (k.generate_url(expires_in=0, query_auth=False))
