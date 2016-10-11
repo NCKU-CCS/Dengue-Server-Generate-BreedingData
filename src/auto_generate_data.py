@@ -27,6 +27,7 @@ from boto.s3.cors import CORSConfiguration
 
 import credentials
 import db_config
+import s3_setting
 
 def extract_from_rows(rows, is_blurred=True):
     result = dict()
@@ -66,14 +67,10 @@ if __name__ == "__main__":
     
     
     s3con = S3Connection(credentials.ACCESS_KEY, credentials.PRIVATE_KEY)
-    bucket = s3con.get_bucket('dengue-test')
+    bucket = s3con.get_bucket(s3_setting.STORAGE_BUCKET)
     
-    cors_cfg = CORSConfiguration()
-    cors_cfg.add_rule('GET', ['https://winone520.github.io',])
-    bucket.set_cors(cors_cfg)
-
     k = Key(bucket)
-    k.key = 'breeding-sources/heatmap_blurred.json'
+    k.key = s3_setting.UPLOAD_BLURRED_FILE
     k.set_contents_from_filename("./breeding_source_blurred.json")
     k.set_metadata("Content-Type", "application/json")
     k.set_acl("public-read")
