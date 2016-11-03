@@ -1,3 +1,6 @@
+# ALLOWED_ORIGIN 可以設定允許跨域請求的網域來源
+# STORAGE_BUCKET 是你的 bucket 名稱
+
 from boto.s3.connection import S3Connection 
 from boto.s3.key import Key
 from boto.s3.cors import CORSConfiguration
@@ -5,7 +8,7 @@ from boto.s3.cors import CORSConfiguration
 import credentials
 
 STORAGE_BUCKET = "dengue-test"
-ALLOWED_ORIGIN = ['https://winone520.github.io',]
+ALLOWED_ORIGIN = '*'
 UPLOAD_BLURRED_FILE = 'breeding-sources/heatmap_blurred.json'
 
 if __name__ == "__main__":
